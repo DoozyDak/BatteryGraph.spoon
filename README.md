@@ -56,10 +56,10 @@ spoon.BatteryGraph:start()
 | `fontSize` | `10` | Label font size |
 | `pollInterval` | `60` | Seconds between battery readings |
 | `maxHours` | `24` | Hours of history to keep |
-| `demoData` | `false` | Fill with synthetic data |
+| `demoData` | `false` | **@deprecated** — use synthetic test data |
 | `trimToDischarge` | `true` | Show only current discharge cycle when battery is draining |
 
-### Demo mode
+### Demo mode (deprecated)
 
 ```lua
 spoon.BatteryGraph.demoData = true

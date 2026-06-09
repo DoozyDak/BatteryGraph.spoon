@@ -28,7 +28,7 @@ obj.textColor         = { white = 1, alpha = 0.6 }
 obj.fontSize          = 10
 obj.pollInterval      = 60
 obj.maxHours          = 24
-obj.demoData          = false
+obj.demoData          = false  -- @deprecated: no longer maintained; may be removed in future versions
 obj.trimToDischarge   = true
 
 obj.__timer        = nil
@@ -337,7 +337,7 @@ local function render()
     obj.canvas:show()
 end
 
-local function generateDemoData()
+local function generateDemoData()  -- @deprecated
     local now = os.time()
     local data = {}
     local interval = 600

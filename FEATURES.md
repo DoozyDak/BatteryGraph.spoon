@@ -122,7 +122,7 @@ All configurable from `init.lua` before calling `:start()`:
 | `fontSize` | `10` | Label font size (Menlo) |
 | `pollInterval` | `60` | Seconds between polls |
 | `maxHours` | `24` | Hours of data retained in `data.json` |
-| `demoData` | `false` | Use synthetic data |
+| `demoData` | `false` | **@deprecated** — use synthetic test data |
 | `trimToDischarge` | `true` | Show only current discharge cycle when battery is draining |
 
 ---
