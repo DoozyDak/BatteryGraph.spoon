@@ -272,7 +272,17 @@ local function render()
 
     local elems = {}
 
-    local function add(e) table.insert(elems, e) end
+    local function add(e) 
+        -- Validate action if present
+        if e.action then
+            local validActions = { stroke = true, fill = true, strokeAndFill = true, clip = true, build = true, skip = true }
+            if not validActions[e.action] then
+                hs.printf("BatteryGraph: Invalid action '%s' in element: %s", tostring(e.action), hs.inspect(e))
+                return
+            end
+        end
+        table.insert(elems, e) 
+    end
 
     if n < 2 then
         add {
@@ -520,24 +530,28 @@ local function render()
     end
     obj.canvas:appendElements(table.unpack(elems))
     obj.canvas:appendElements({
-        id = "tooltip",
-        type = "text",
-        text = "",
-        textFont = "Menlo",
-        textSize = obj.fontSize,
-        textColor = { white = 1, alpha = 0 },
-        frame = { x = 0, y = 2, w = obj.width, h = obj.fontSize + 4 },
-        textAlignment = "center",
+        {
+            id = "tooltip",
+            type = "text",
+            text = "",
+            textFont = "Menlo",
+            textSize = obj.fontSize,
+            textColor = { white = 1, alpha = 0 },
+            frame = { x = 0, y = 2, w = obj.width, h = obj.fontSize + 4 },
+            textAlignment = "center",
+        }
     })
     obj.__tooltipIdx = obj.canvas:elementCount()
     obj.canvas:appendElements({
-        id = "cursorLine",
-        type = "segments",
-        action = "stroke",
-        strokeColor = { white = 1, alpha = 0 },
-        strokeWidth = 0.5,
-        closed = false,
-        coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } },
+        {
+            id = "cursorLine",
+            type = "segments",
+            action = "stroke",
+            strokeColor = { white = 1, alpha = 0 },
+            strokeWidth = 0.5,
+            closed = false,
+            coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } },
+        }
     })
     obj.__cursorIdx = obj.canvas:elementCount()
 
