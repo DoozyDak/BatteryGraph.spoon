@@ -46,6 +46,8 @@ obj.__gapMode      = nil
 obj.__dragStart    = nil
 obj.__dragEnd      = nil
 obj.__selectionIdx = nil
+obj.__selectionBoxIdx = nil
+obj.__selectionStatsIdx = nil
 obj.__historyWebview = nil
 obj.__historyCloseCanvas = nil
 obj.__panLeftHotkey = nil
@@ -186,7 +188,7 @@ local function buildCanvas()
                     cl.coordinates = { { x = g.x, y = margin.top }, { x = g.x, y = margin.top + hCh } }
                     cl.strokeColor = { white = 1, alpha = 0.3 }
                 end
-            end
+             end
 
             local function updateSelectionBox()
                 local hData = getDisplayData()
@@ -265,15 +267,10 @@ local function buildCanvas()
                 local x = select(1, ...)
                 obj.__dragStart = x
                 obj.__dragEnd = x
-                obj.__selectionIdx = nil
-            elseif message == "mouseUp" then
-                if obj.__dragStart and obj.__dragEnd and math.abs(obj.__dragEnd - obj.__dragStart) > 5 then
-                    obj.__selectionIdx = { start = obj.__dragStart, end = obj.__dragEnd }
-                else
-                    obj.__dragStart = nil
-                    obj.__dragEnd = nil
-                    obj.__selectionIdx = nil
-                end
+             elseif message == "mouseUp" then
+                obj.__dragStart = nil
+                obj.__dragEnd = nil
+                updateSelectionBox()
                 local x = select(1, ...)
                 local gapThreshold = 4
                 obj.__gapMode = nil
@@ -286,7 +283,7 @@ local function buildCanvas()
                         end
                     end
                 end
-            elseif message == "mouseMove" then
+             elseif message == "mouseMove" then
                 local x = select(1, ...)
                 
                 -- Track drag movement
@@ -335,11 +332,10 @@ local function buildCanvas()
                         cl.strokeColor = { white = 1, alpha = 0.3 }
                     end
                 end
-            elseif message == "mouseExit" then
+             elseif message == "mouseExit" then
                 obj.__gapMode = nil
                 obj.__dragStart = nil
                 obj.__dragEnd = nil
-                obj.__selectionIdx = nil
                 updateSelectionBox()
                 if obj.__tooltipIdx and obj.canvas:elementCount() >= obj.__tooltipIdx then
                     local el = obj.canvas[obj.__tooltipIdx]
@@ -652,29 +648,26 @@ local function render()
             closed = false,
             coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } },
         }
-    })
+     })
     obj.__cursorIdx = obj.canvas:elementCount()
     obj.canvas:appendElements({
         {
-            id = "selectionBox",
             type = "rectangle",
-            action = "stroke",
+            action = "strokeAndFill",
             strokeColor = { white = 1, alpha = 0 },
-            strokeWidth = 1.5,
             fillColor = { white = 1, alpha = 0 },
-            frame = { x = 0, y = margin.top, w = 0, h = chartH() },
+            frame = { x = 0, y = 0, w = 0, h = 0 },
         }
     })
     obj.__selectionBoxIdx = obj.canvas:elementCount()
     obj.canvas:appendElements({
         {
-            id = "selectionStats",
             type = "text",
             text = "",
             textFont = "Menlo",
             textSize = obj.fontSize,
             textColor = { white = 1, alpha = 0 },
-            frame = { x = 0, y = obj.height - 32, w = obj.width, h = 28 },
+            frame = { x = 0, y = obj.height - margin.bottom + 4, w = obj.width, h = 16 },
             textAlignment = "center",
         }
     })
