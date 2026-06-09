@@ -11,7 +11,6 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 - **Trim to discharge** — automatically cuts off previous charge cycles once the battery starts draining
 - **Disk persistence** — survives restarts via `data.json`
 - **Clear button** — click the "×" (twice within 2s) to reset all data
-- **Demo mode** — synthetic test data with `demoData = true`
 - **Configurable** — colors, sizes, position, polling interval, and more
 
 ## Installation
@@ -56,15 +55,7 @@ spoon.BatteryGraph:start()
 | `fontSize` | `10` | Label font size |
 | `pollInterval` | `60` | Seconds between battery readings |
 | `maxHours` | `24` | Hours of history to keep |
-| `demoData` | `false` | **@deprecated** — use synthetic test data |
 | `trimToDischarge` | `true` | Show only current discharge cycle when battery is draining |
-
-### Demo mode (deprecated)
-
-```lua
-spoon.BatteryGraph.demoData = true
-spoon.BatteryGraph:start()
-```
 
 ## Data Storage
 
