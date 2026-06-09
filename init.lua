@@ -43,6 +43,9 @@ obj.__clearTimer   = nil
 obj.__tooltipIdx   = nil
 obj.__cursorIdx    = nil
 obj.__gapMode      = nil
+obj.__dragStart    = nil
+obj.__dragEnd      = nil
+obj.__selectionIdx = nil
 obj.__historyWebview = nil
 obj.__historyCloseCanvas = nil
 obj.__panLeftHotkey = nil
@@ -185,7 +188,92 @@ local function buildCanvas()
                 end
             end
 
-            if message == "mouseUp" then
+            local function updateSelectionBox()
+                local hData = getDisplayData()
+                local hn = #hData
+                if hn < 2 or not obj.__dragStart or not obj.__dragEnd then
+                    if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                        local sb = obj.canvas[obj.__selectionBoxIdx]
+                        sb.strokeColor = { white = 1, alpha = 0 }
+                        sb.fillColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                        local ss = obj.canvas[obj.__selectionStatsIdx]
+                        ss.text = ""
+                        ss.textColor = { white = 1, alpha = 0 }
+                    end
+                    return
+                end
+                
+                local hCw = obj.width - margin.left - margin.right
+                local x1 = math.min(obj.__dragStart, obj.__dragEnd)
+                local x2 = math.max(obj.__dragStart, obj.__dragEnd)
+                local idx1 = math.max(1, math.min(hn, math.floor((x1 - margin.left) / hCw * (hn - 1)) + 1))
+                local idx2 = math.max(1, math.min(hn, math.floor((x2 - margin.left) / hCw * (hn - 1)) + 1))
+                
+                if idx1 == idx2 then
+                    if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                        local sb = obj.canvas[obj.__selectionBoxIdx]
+                        sb.strokeColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                        local ss = obj.canvas[obj.__selectionStatsIdx]
+                        ss.text = ""
+                        ss.textColor = { white = 1, alpha = 0 }
+                    end
+                    return
+                end
+                
+                local e1 = hData[idx1]
+                local e2 = hData[idx2]
+                if not e1 or not e2 then return end
+                
+                local pct1 = normalizeP(e1.p) * 100
+                local pct2 = normalizeP(e2.p) * 100
+                local pctChange = pct2 - pct1
+                local timeChange = e2.t - e1.t
+                local hourChange = timeChange / 3600
+                local minChange = timeChange / 60
+                
+                local ratePerHour = pctChange / math.max(hourChange, 0.016667)  -- min 1 minute
+                local rateStr = ""
+                if math.abs(ratePerHour) >= 0.1 then
+                    rateStr = string.format("%.1f%%/h", ratePerHour)
+                else
+                    local ratePerMin = pctChange / math.max(minChange, 1)
+                    rateStr = string.format("%.2f%%/min", ratePerMin)
+                end
+                
+                local direction = pctChange > 0 and "↑" or "↓"
+                local txt = string.format("%s %.1f%% in %.0fm  %s", direction, math.abs(pctChange), minChange, rateStr)
+                
+                if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                    local sb = obj.canvas[obj.__selectionBoxIdx]
+                    sb.frame = { x = x1, y = margin.top, w = x2 - x1, h = obj.height - margin.top - margin.bottom }
+                    sb.strokeColor = { white = 0.7, green = 0.8, blue = 1, alpha = 0.6 }
+                    sb.fillColor = { white = 0.7, green = 0.8, blue = 1, alpha = 0.1 }
+                end
+                
+                if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                    local ss = obj.canvas[obj.__selectionStatsIdx]
+                    ss.text = txt
+                    ss.textColor = { white = 1, alpha = 0.95 }
+                end
+            end
+
+            if message == "mouseDown" then
+                local x = select(1, ...)
+                obj.__dragStart = x
+                obj.__dragEnd = x
+                obj.__selectionIdx = nil
+            elseif message == "mouseUp" then
+                if obj.__dragStart and obj.__dragEnd and math.abs(obj.__dragEnd - obj.__dragStart) > 5 then
+                    obj.__selectionIdx = { start = obj.__dragStart, end = obj.__dragEnd }
+                else
+                    obj.__dragStart = nil
+                    obj.__dragEnd = nil
+                    obj.__selectionIdx = nil
+                end
                 local x = select(1, ...)
                 local gapThreshold = 4
                 obj.__gapMode = nil
@@ -200,6 +288,14 @@ local function buildCanvas()
                 end
             elseif message == "mouseMove" then
                 local x = select(1, ...)
+                
+                -- Track drag movement
+                if obj.__dragStart then
+                    obj.__dragEnd = x
+                    updateSelectionBox()
+                    return
+                end
+                
                 local gapThreshold = 4
 
                 if obj.__gapMode and math.abs(x - obj.__gapMode.x) <= gapThreshold then
@@ -241,6 +337,10 @@ local function buildCanvas()
                 end
             elseif message == "mouseExit" then
                 obj.__gapMode = nil
+                obj.__dragStart = nil
+                obj.__dragEnd = nil
+                obj.__selectionIdx = nil
+                updateSelectionBox()
                 if obj.__tooltipIdx and obj.canvas:elementCount() >= obj.__tooltipIdx then
                     local el = obj.canvas[obj.__tooltipIdx]
                     el.text = ""
@@ -554,6 +654,31 @@ local function render()
         }
     })
     obj.__cursorIdx = obj.canvas:elementCount()
+    obj.canvas:appendElements({
+        {
+            id = "selectionBox",
+            type = "rectangle",
+            action = "stroke",
+            strokeColor = { white = 1, alpha = 0 },
+            strokeWidth = 1.5,
+            fillColor = { white = 1, alpha = 0 },
+            frame = { x = 0, y = margin.top, w = 0, h = chartH() },
+        }
+    })
+    obj.__selectionBoxIdx = obj.canvas:elementCount()
+    obj.canvas:appendElements({
+        {
+            id = "selectionStats",
+            type = "text",
+            text = "",
+            textFont = "Menlo",
+            textSize = obj.fontSize,
+            textColor = { white = 1, alpha = 0 },
+            frame = { x = 0, y = obj.height - 32, w = obj.width, h = 28 },
+            textAlignment = "center",
+        }
+    })
+    obj.__selectionStatsIdx = obj.canvas:elementCount()
 
     local xpos = obj.rightMargin and (hs.screen.mainScreen():fullFrame().w - obj.width - obj.rightMargin) or obj.position.x
     obj.canvas:frame({ x = xpos, y = obj.position.y, w = obj.width, h = obj.height })
