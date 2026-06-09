@@ -57,6 +57,7 @@ spoon.BatteryGraph:start()
 | `pollInterval` | `60` | Seconds between battery readings |
 | `maxHours` | `24` | Hours of history to keep |
 | `demoData` | `false` | Fill with synthetic data |
+| `trimToDischarge` | `true` | Show only current discharge cycle when battery is draining |
 
 ### Demo mode
 

@@ -29,6 +29,7 @@ obj.fontSize          = 10
 obj.pollInterval      = 60
 obj.maxHours          = 24
 obj.demoData          = false
+obj.trimToDischarge   = true
 
 obj.__timer        = nil
 obj.canvas         = nil
@@ -133,7 +134,7 @@ local function render()
 
     local data = obj.__data
     local n = #data
-    if n >= 2 then
+    if obj.trimToDischarge and n >= 2 then
         local curPct = math.floor(normalizeP(data[n].p) * 100 + 0.5)
         local maxPct = 0
         local maxIdx = 0
