@@ -11,6 +11,7 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 - **Gap markers** — red vertical indicators show where time gaps (sleep, offline periods) occurred; adjacent gaps automatically merge into one marker
 - **Change markers** — vertical lines at battery change events with auto-scaling density (`(changes/20)^1.3`)
 - **Trim to discharge** — automatically cuts off previous charge cycles once the battery starts draining
+- **Drag-to-select** — click and drag to see average battery change rate for any time range
 - **Disk persistence** — survives restarts via `data.json`
 - **Configurable** — colors, sizes, position, polling interval, and more
 
@@ -30,7 +31,7 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
   - Total % change and duration
   - Rate in %/hour (if >= 0.1) or %/minute (if smaller)
 - Example: `↓ 15.2% in 94m  9.7%/h`
-- Selection clears when you release the mouse or move away
+- Selection stays visible after release; clears when you move the mouse within the chart or mouse leaves the chart area
 
 **Click near a red gap marker** (within ~4px):
 - Shows **gap range** instead: start and end times with percentages on both sides (e.g., `10:20am 64% → 11:25am 57%`)

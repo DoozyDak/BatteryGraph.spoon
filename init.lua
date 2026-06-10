@@ -46,6 +46,7 @@ obj.__cursorIdx    = nil
 obj.__gapMode      = nil
 obj.__dragStart    = nil
 obj.__dragEnd      = nil
+obj.__dragActive   = nil
 obj.__selectionIdx = nil
 obj.__selectionBoxIdx = nil
 obj.__selectionStatsIdx = nil
@@ -287,6 +288,7 @@ local function buildCanvas()
                 local x = select(1, ...)
                 obj.__dragStart = x
                 obj.__dragEnd = x
+                obj.__dragActive = true
                 
                 -- Create eventtap inside mouseDown like asmagill's kodiRemote example
                 -- Canvas doesn't fire mouseMove while button is held; eventtap handles drag
@@ -298,12 +300,7 @@ local function buildCanvas()
                                 obj.__moveTracker:stop()
                                 obj.__moveTracker = nil
                             end
-                            hs.timer.doAfter(0.3, function()
-                                if not obj.__dragStart then return end
-                                obj.__dragStart = nil
-                                obj.__dragEnd = nil
-                                updateSelectionBox()
-                            end)
+                            obj.__dragActive = false
                         else
                             local mousePos = hs.mouse.absolutePosition()
                             local canvasFrame = obj.canvas:frame()
@@ -328,6 +325,27 @@ local function buildCanvas()
                 end
              elseif message == "mouseMove" then
                 local x = select(1, ...)
+                
+                -- Clear post-drag selection when cursor moves
+                if obj.__dragStart and not obj.__dragActive then
+                    if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                        local sb = obj.canvas[obj.__selectionBoxIdx]
+                        sb.strokeColor = { white = 1, alpha = 0 }
+                        sb.fillColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                        local ss = obj.canvas[obj.__selectionStatsIdx]
+                        ss.text = ""
+                        ss.textColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
+                        local cl = obj.canvas[obj.__cursorIdx]
+                        cl.strokeColor = { white = 1, alpha = 0 }
+                    end
+                    obj.__dragStart = nil
+                    obj.__dragEnd = nil
+                    obj.__gapMode = nil
+                end
                 
                 local gapThreshold = 4
 
@@ -369,8 +387,8 @@ local function buildCanvas()
                     end
                 end
              elseif message == "mouseExit" then
-                -- Don't clear drag state if we're actively dragging (eventtap handles it)
-                if obj.__dragStart then
+                -- Keep drag state if actively dragging (eventtap handles it)
+                if obj.__dragActive then
                     return
                 end
                 
@@ -378,6 +396,22 @@ local function buildCanvas()
                 if obj.__moveTracker then
                     obj.__moveTracker:stop()
                     obj.__moveTracker = nil
+                end
+                
+                -- Clear post-drag selection if showing
+                if obj.__dragStart then
+                    if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                        local sb = obj.canvas[obj.__selectionBoxIdx]
+                        sb.strokeColor = { white = 1, alpha = 0 }
+                        sb.fillColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                        local ss = obj.canvas[obj.__selectionStatsIdx]
+                        ss.text = ""
+                        ss.textColor = { white = 1, alpha = 0 }
+                    end
+                    obj.__dragStart = nil
+                    obj.__dragEnd = nil
                 end
                 
                 obj.__gapMode = nil
