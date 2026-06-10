@@ -7,6 +7,7 @@ local json    = require("hs.json")
 local timer   = require("hs.timer")
 local webview = require("hs.webview")
 local hotkey  = require("hs.hotkey")
+local eventtap = require("hs.eventtap")
 
 local obj = {
     name      = "BatteryGraph",
@@ -247,8 +248,9 @@ local function buildCanvas()
                 end
                 
                 local direction = pctChange > 0 and "↑" or "↓"
-                local txt = string.format("%s %.1f%% in %.0fm  %s", direction, math.abs(pctChange), minChange, rateStr)
+                local rateTxt = string.format("%s %.1f%% in %.0fm  %s", direction, math.abs(pctChange), minChange, rateStr)
                 
+                -- Update selection box frame
                 if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
                     local sb = obj.canvas[obj.__selectionBoxIdx]
                     sb.frame = { x = x1, y = margin.top, w = x2 - x1, h = obj.height - margin.top - margin.bottom }
@@ -256,10 +258,28 @@ local function buildCanvas()
                     sb.fillColor = { white = 0.7, green = 0.8, blue = 1, alpha = 0.1 }
                 end
                 
+                -- Show start → end point info at top (reuse tooltip element)
+                local function fmtTime(t)
+                    local hh = tonumber(os.date("%I", t))
+                    local mm = os.date("%M", t)
+                    local ap = os.date("%p", t):lower():sub(1, 1)
+                    return ("%d:%s%s"):format(hh, mm, ap)
+                end
+                local tipTxt = ("%s %d%%  →  %s %d%%"):format(fmtTime(e1.t), math.floor(pct1), fmtTime(e2.t), math.floor(pct2))
+                local tw = 180
+                local tipX = math.max(0, math.min(obj.width - tw, (x1 + x2) / 2 - tw / 2))
+                if obj.__tooltipIdx and obj.canvas:elementCount() >= obj.__tooltipIdx then
+                    local el = obj.canvas[obj.__tooltipIdx]
+                    el.text = tipTxt
+                    el.textColor = { white = 1, alpha = 0.95 }
+                    el.frame = { x = tipX, y = 2, w = tw, h = obj.fontSize + 4 }
+                end
+                
+                -- Show rate stats at bottom
                 if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
                     local ss = obj.canvas[obj.__selectionStatsIdx]
-                    ss.text = txt
-                    ss.textColor = { white = 1, alpha = 0.95 }
+                    ss.text = rateTxt
+                    ss.textColor = obj.textColor
                 end
             end
 
@@ -268,43 +288,31 @@ local function buildCanvas()
                 obj.__dragStart = x
                 obj.__dragEnd = x
                 
-                -- Create eventtap to track mouse drag (canvas doesn't fire mouseMove while button is held)
-                if obj.__eventtap then obj.__eventtap:stop() end
-                obj.__eventtap = hs.eventtap.new(
-                    { hs.eventtap.event.types.mouseDragged, hs.eventtap.event.types.leftMouseUp },
-                    function(evt)
-                        local evtType = evt:getType()
-                        if evtType == hs.eventtap.event.types.mouseDragged then
-                            -- Get mouse position in canvas coordinates
-                            local mousePos = hs.mouse.absolutePosition()
-                            local canvasFrame = obj.canvas:frame()
-                            local relX = mousePos.x - canvasFrame.x
-                            local relY = mousePos.y - canvasFrame.y
-                            
-                            -- Update drag end
-                            obj.__dragEnd = relX
-                            updateSelectionBox()
-                            return false  -- Don't consume the event
-                        elseif evtType == hs.eventtap.event.types.leftMouseUp then
-                            -- Mouse released - stop eventtap
-                            if obj.__eventtap then
-                                obj.__eventtap:stop()
-                                obj.__eventtap = nil
+                -- Create eventtap inside mouseDown like asmagill's kodiRemote example
+                -- Canvas doesn't fire mouseMove while button is held; eventtap handles drag
+                obj.__moveTracker = eventtap.new(
+                    { eventtap.event.types.leftMouseDragged, eventtap.event.types.leftMouseUp },
+                    function(e)
+                        if e:getType() == eventtap.event.types.leftMouseUp then
+                            if obj.__moveTracker then
+                                obj.__moveTracker:stop()
+                                obj.__moveTracker = nil
                             end
-                            
-                            -- Clear drag state after a brief delay to show selection
                             hs.timer.doAfter(0.3, function()
-                                if not obj.__dragStart then return end  -- Already cleared
+                                if not obj.__dragStart then return end
                                 obj.__dragStart = nil
                                 obj.__dragEnd = nil
                                 updateSelectionBox()
                             end)
-                            return false
+                        else
+                            local mousePos = hs.mouse.absolutePosition()
+                            local canvasFrame = obj.canvas:frame()
+                            obj.__dragEnd = mousePos.x - canvasFrame.x
+                            updateSelectionBox()
                         end
+                        return false
                     end
-                )
-                obj.__eventtap:start()
-                return false
+                ):start()
              elseif message == "mouseUp" then
                 local x = select(1, ...)
                 local gapThreshold = 4
@@ -367,9 +375,9 @@ local function buildCanvas()
                 end
                 
                 -- Clean up eventtap if it exists
-                if obj.__eventtap then
-                    obj.__eventtap:stop()
-                    obj.__eventtap = nil
+                if obj.__moveTracker then
+                    obj.__moveTracker:stop()
+                    obj.__moveTracker = nil
                 end
                 
                 obj.__gapMode = nil
@@ -708,7 +716,7 @@ local function render()
             textFont = "Menlo",
             textSize = obj.fontSize,
             textColor = { white = 1, alpha = 0 },
-            frame = { x = 0, y = obj.height - margin.bottom + 4, w = obj.width, h = 16 },
+            frame = { x = 0, y = obj.height - 14, w = obj.width, h = 14 },
             textAlignment = "center",
         }
     })
