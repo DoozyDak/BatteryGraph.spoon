@@ -6,16 +6,17 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 
 ## Features
 
-- **Live graph** — polls `hs.battery` every 60s and draws a scrolling line chart on the desktop
-- **Continuous curve** — smooth line across all data points with no visual breaks
+- **Live desktop widget** — polls `hs.battery` every 60s and draws a stepped line chart on the desktop
+- **Stepped line** — horizontal holds at each sampled value with vertical drops/gains at change points (no diagonal interpolation between polls)
 - **Gap markers** — red vertical indicators show where time gaps (sleep, offline periods) occurred; adjacent gaps automatically merge into one marker
 - **Change markers** — vertical lines at battery change events with auto-scaling density (`(changes/20)^1.3`)
 - **Trim to discharge** — automatically cuts off previous charge cycles once the battery starts draining
 - **Drag-to-select** — click and drag to see average battery change rate for any time range
+- **Full-history popup** — click ◉ to open an interactive Chart.js graph in your browser with pan, zoom, and scroll
 - **Disk persistence** — survives restarts via `data.json`
 - **Configurable** — colors, sizes, position, polling interval, and more
 
-## Interactions
+## Widget Interactions
 
 **Hover over the chart:**
 - Shows **time and percentage** of the hovered data point at the top (e.g., `10:20am  64%`)
@@ -25,25 +26,34 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 **Drag across the chart:**
 - Click and drag to select a time range
 - A **light blue box** appears around the selected area (snapped to data points)
-- **Vertical cursor lines** appear at both start and end positions, snapping to the nearest data point
-- **Start → End point info** appears at the top: time and percentage of both endpoints (e.g., `10:20am 64%  →  11:25am 57%`)
-- **Average battery change rate** at the bottom:
-  - Direction arrow (↑ for increase, ↓ for decrease)
-  - Total % change and duration
-  - Rate in %/hour (if >= 0.1) or %/minute (if smaller)
-- Example: `↓ 15.2% in 94m  9.7%/h`
+- **Vertical cursor lines** at both start and end positions, snapping to the nearest data point
+- **Start → End point info** at the top: time and percentage of both endpoints
+- **Average battery change rate** at the bottom: direction arrow, % change, duration, %/hour
 - Must drag more than 3px to activate (preserves hover on tiny accidental drags)
 - Selection stays visible after release; clears when you move the cursor beyond 4px from the release point or the mouse leaves the chart area
 
 **Click near a red gap marker** (within ~4px):
-- Shows **gap range** instead: start and end times with percentages on both sides (e.g., `10:20am 64% → 11:25am 57%`)
-- The cursor line snaps to the gap marker
+- Shows **gap range** instead: start and end times with percentages on both sides
 - Gap info persists while the cursor stays near the gap marker; reverts to normal hover when you move away
 
-**Click the "×" button** (bottom-left corner):
-- **Two-click confirmation**: first click arms it (2-second window), second click within that window clears all data
-- Resets data and records one fresh battery reading
-- Data is saved to `data.json`
+**Click "◉"** (top-right corner): opens the full-history popup in your browser
+
+**Click "×"** (bottom-right corner):
+- **Two-click confirmation**: first click arms it (2-second window), second click clears all data
+- Records one fresh battery reading after clearing
+
+## Full-History Popup
+
+Click **◉** to open an interactive Chart.js graph in your default browser showing all recorded data.
+
+| Gesture | Action |
+|---|---|
+| **Drag** | Pan chart horizontally |
+| **Shift + drag** | Draw selection box → zoom on release |
+| **Scroll** | Zoom in/out on x-axis |
+| **Double-click** | Reset zoom to original view |
+
+X-axis labels in 12-hour time format. Zoom limited to 1-minute minimum range. Chart starts fully zoomed out.
 
 ## Installation
 

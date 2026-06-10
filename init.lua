@@ -5,8 +5,6 @@ local canvas  = require("hs.canvas")
 local battery = require("hs.battery")
 local json    = require("hs.json")
 local timer   = require("hs.timer")
-local webview = require("hs.webview")
-local hotkey  = require("hs.hotkey")
 local eventtap = require("hs.eventtap")
 
 local obj = {
@@ -48,15 +46,11 @@ obj.__gapMode      = nil
 obj.__dragStart    = nil
 obj.__dragEnd      = nil
 obj.__dragActive   = nil
-obj.__selectionIdx = nil
 obj.__selectionBoxIdx = nil
 obj.__selectionStatsIdx = nil
-obj.__historyWebview = nil
-obj.__historyCloseCanvas = nil
-obj.__panLeftHotkey = nil
-obj.__panRightHotkey = nil
+obj.__moveTracker = nil
 
-local margin = { top = 18, right = 36, bottom = 24, left = 34 }
+local margin = { top = 18, right = 26, bottom = 24, left = 34 }
 
 local function dataPath()
     return obj.spoonPath .. "data.json"
@@ -165,6 +159,10 @@ local function buildCanvas()
                         obj.__clearTimer = nil
                     end)
                 end
+            end
+        elseif id == "popupButton" then
+            if message == "mouseUp" then
+                obj:showFullHistoryPopup()
             end
         elseif id == "hoverArea" then
             local function showGapInfo(g)
@@ -549,13 +547,23 @@ local function render()
             frame = { x = margin.left, y = math.floor(obj.height / 2), w = 220, h = 24 },
         }
         add {
+            id = "popupButton",
+            type = "text",
+            text = "◉",
+            textFont = "Menlo",
+            textSize = 12,
+            textColor = { white = 1, alpha = 0.3 },
+            frame = { x = obj.width - 16, y = 4, w = 14, h = 14 },
+            trackMouseUp = true,
+        }
+        add {
             id = "clearButton",
             type = "text",
             text = "×",
             textFont = "Menlo",
             textSize = 12,
             textColor = { white = 1, alpha = 0.3 },
-            frame = { x = 4, y = obj.height - 16, w = 14, h = 14 },
+            frame = { x = obj.width - 16, y = obj.height - 16, w = 14, h = 14 },
             trackMouseUp = true,
         }
         while obj.canvas:elementCount() > 1 do
@@ -761,13 +769,23 @@ local function render()
     end
 
     add {
+        id = "popupButton",
+        type = "text",
+        text = "◉",
+        textFont = "Menlo",
+        textSize = 12,
+        textColor = { white = 1, alpha = 0.3 },
+        frame = { x = obj.width - 16, y = 4, w = 14, h = 14 },
+        trackMouseUp = true,
+    }
+    add {
         id = "clearButton",
         type = "text",
         text = "×",
         textFont = "Menlo",
         textSize = 12,
         textColor = { white = 1, alpha = 0.3 },
-        frame = { x = 4, y = obj.height - 16, w = 14, h = 14 },
+        frame = { x = obj.width - 16, y = obj.height - 16, w = 14, h = 14 },
         trackMouseUp = true,
     }
     add {
@@ -866,64 +884,6 @@ local function generateDemoData()  -- @deprecated
     saveData()
 end
 
-local function buildHistoryHTML(data)
-    local jsonData = json.encode(data)
-    return [[<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>BatteryGraph — Full History</title>
- <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a1a1a;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;width:100vw;height:100vh;-webkit-user-select:none;user-select:none;touch-action:none}
-#wrap{width:100%;height:100%;padding:16px}
-#help{position:fixed;bottom:6px;left:50%;transform:translateX(-50%);color:#444;font-size:10px;z-index:100;pointer-events:none;white-space:nowrap}
-</style>
-</head>
-<body>
-<div id="wrap"><canvas id="chart"></canvas></div>
-<div id="help">scroll/pinch to zoom · arrow keys to pan · shift+drag to zoom area</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
-<script>
-var raw=]] .. jsonData .. [[;
-var pts=raw.map(function(d){return{x:d.t*1000,y:Math.round(d.p*100)}});
-if(pts.length===0){
-  document.getElementById('chart').remove();
-  document.getElementById('wrap').textContent='No data available.';
-  document.getElementById('wrap').style.cssText='display:flex;align-items:center;justify-content:center;height:100%;font-size:16px;color:#666';
-  }else{
-    try{Chart.register(ChartZoom)}catch(e){}
-  try{
-  var lo=pts[0].x,hi=pts[pts.length-1].x;
-  window.chart=new Chart(document.getElementById('chart'),{
-    type:'line',
-    data:{datasets:[{label:'Battery %',data:pts,borderColor:'rgba(51,179,255,0.85)',backgroundColor:'rgba(51,179,255,0.15)',fill:true,pointRadius:0,pointHitRadius:8,borderWidth:2,tension:0}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,animation:false,
-      interaction:{mode:'nearest',intersect:false},
-      scales:{
-        x:{type:'linear',min:lo+(hi-lo)*0.3,max:hi,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#999',font:{size:11},maxTicksLimit:10,callback:function(v){var d=new Date(v);return d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes()}}},
-        y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#999',font:{size:11},callback:function(v){return v+"%"}}}
-      },
-      plugins:{
-        legend:{display:false},
-        tooltip:{backgroundColor:"rgba(0,0,0,0.85)",titleColor:"#ccc",bodyColor:"#fff",cornerRadius:6,padding:10,callbacks:{title:function(it){return new Date(it[0].parsed.x).toLocaleString()},label:function(it){return it.parsed.y+"%"}}},
-        zoom:{limits:{x:{min:lo,max:hi}},zoom:{wheel:{enabled:true,speed:0.1},pinch:{enabled:true},mode:"x",drag:{enabled:true,modifierKey:"shift"}},pan:{enabled:true,mode:"x"}}
-      }
-    }
-  });
-  }catch(e){
-    document.getElementById('chart').remove();
-    document.getElementById('wrap').textContent='Chart error: '+e.message;
-  }
-}
-</script>
-</body>
-</html>]]
-end
-
 local function update()
     record()
     render()
@@ -944,81 +904,82 @@ function obj:start()
     return self
 end
 
---- BatteryGraph:showFullHistory()
---- @deprecated Popup window graph is deprecated. This method may be removed in a future version.
---- Opens an interactive full-history chart in a centered popup window
-function obj:showFullHistory()
-    if obj.__historyWebview then
-        local ok = pcall(obj.__historyWebview.show, obj.__historyWebview)
-        if ok then return end
-        obj.__historyWebview = nil
-    end
-    local screen = hs.screen.mainScreen()
-    local sf = screen:fullFrame()
-    local w, h = 720, 480
-    local x = sf.x + (sf.w - w) / 2
-    local y = sf.y + (sf.h - h) / 2
-    local wv = webview.new({ x = x, y = y, w = w, h = h }, {
-        allowGestures = true,
-        allowNewWindows = false,
-        developerExtras = false,
-    })
-    wv:windowStyle("utility")
-    wv:windowTitle("BatteryGraph — Full History")
-    wv:html(buildHistoryHTML(getDisplayData()))
-    wv:show()
-    obj.__historyWebview = wv
-
-    local function panDir(dir)
-        if not obj.__historyWebview then return end
-        local amt = dir == "left" and "-100" or "100"
-        obj.__historyWebview:evaluateJavaScript("window.chart&&window.chart.pan({x:" .. amt .. "},'default')", nil)
-    end
-    local function focused()
-        local fw = hs.window.focusedWindow()
-        return fw and obj.__historyWebview:hswindow() and fw:id() == obj.__historyWebview:hswindow():id()
-    end
-    obj.__panLeftHotkey = hotkey.bind({}, "left", function()
-        if focused() then panDir("left") end
-    end)
-    obj.__panRightHotkey = hotkey.bind({}, "right", function()
-        if focused() then panDir("right") end
-    end)
-
-    local cc = canvas.new({ x = x + w - 22, y = y + 4, w = 18, h = 18 })
-    cc:level(canvas.windowLevels.floating)
-    cc:behavior(canvas.windowBehaviors.canJoinAllSpaces)
-    cc[1] = {
-        type = "text",
-        text = "−",
-        textFont = "Menlo",
-        textSize = 14,
-        textColor = { white = 1, alpha = 0.6 },
-        frame = { x = 0, y = 0, w = 18, h = 18 },
-        textAlignment = "center",
-        trackMouseUp = true,
+local function buildHistoryHTML(data)
+    local jsonData = json.encode(data)
+    return [[<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BatteryGraph — Full History</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a1a;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;width:100vw;height:100vh}
+#wrap{width:100%;height:100%;padding:16px}
+#help{position:fixed;bottom:6px;left:50%;transform:translateX(-50%);color:#444;font-size:10px;z-index:100;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="chart"></canvas></div>
+<div id="help">drag to pan · shift+drag to zoom · scroll to zoom · double-click to reset</div>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
+<script>
+var raw=]] .. jsonData .. [[;
+var pts=raw.map(function(d){return{x:d.t*1000,y:Math.round(d.p*100)}});
+if(pts.length===0){
+  document.getElementById('chart').remove();
+  document.getElementById('wrap').textContent='No data available.';
+  document.getElementById('wrap').style.cssText='display:flex;align-items:center;justify-content:center;height:100%;font-size:16px;color:#666';
+  }else{
+    try{Chart.register(ChartZoom)}catch(e){}
+  try{
+  var lo=pts[0].x,hi=pts[pts.length-1].x;
+  window.chart=new Chart(document.getElementById('chart'),{
+    type:'line',
+    data:{datasets:[{label:'Battery %',data:pts,borderColor:'rgba(51,179,255,0.85)',backgroundColor:'rgba(51,179,255,0.15)',fill:true,pointRadius:0,pointHitRadius:8,borderWidth:2,stepped:'before'}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'nearest',intersect:false},
+      scales:{
+        x:{type:'linear',min:lo,max:hi,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#999',font:{size:11},maxTicksLimit:10,callback:function(v){var d=new Date(v);var h=d.getHours()%12||12;var ampm=d.getHours()>=12?"pm":"am";return h+":"+(d.getMinutes()<10?"0":"")+d.getMinutes()+ampm}}},
+        y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#999',font:{size:11},callback:function(v){return v+"%"}}}
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:"rgba(0,0,0,0.85)",titleColor:"#ccc",bodyColor:"#fff",cornerRadius:6,padding:10,callbacks:{title:function(it){return new Date(it[0].parsed.x).toLocaleString()},label:function(it){return it.parsed.y+"%"}}},
+        zoom:{limits:{x:{min:lo,max:hi,minRange:60000}},zoom:{wheel:{enabled:true,speed:0.1},pinch:{enabled:true},mode:"x",drag:{enabled:true,modifierKey:"shift"}},pan:{enabled:true,mode:"x",threshold:0}}
+      }
     }
-    cc:mouseCallback(function()
-        obj:closeFullHistory()
-    end)
-    cc:show()
-    obj.__historyCloseCanvas = cc
+  });
+  }catch(e){
+    document.getElementById('chart').remove();
+    document.getElementById('wrap').textContent='Chart error: '+e.message;
+  }
+}
+document.getElementById('chart').ondblclick=function(){window.chart&&window.chart.resetZoom()};
+</script>
+</body>
+</html>]]
 end
 
---- BatteryGraph:closeFullHistory()
---- @deprecated Popup window graph is deprecated. This method may be removed in a future version.
---- Closes the full-history popup if open
-function obj:closeFullHistory()
-    if obj.__panLeftHotkey then obj.__panLeftHotkey:delete(); obj.__panLeftHotkey = nil end
-    if obj.__panRightHotkey then obj.__panRightHotkey:delete(); obj.__panRightHotkey = nil end
-    if obj.__historyWebview then
-        obj.__historyWebview:delete()
-        obj.__historyWebview = nil
+--- BatteryGraph:showFullHistoryPopup()
+--- Opens full history in the default browser via a temp HTML file
+function obj:showFullHistoryPopup()
+    local html = buildHistoryHTML(obj.__data)
+    local path = "/tmp/BatteryGraph-history.html"
+    local f = io.open(path, "w")
+    if f then
+        f:write(html)
+        f:close()
     end
-    if obj.__historyCloseCanvas then
-        obj.__historyCloseCanvas:delete()
-        obj.__historyCloseCanvas = nil
-    end
+    os.execute('open "' .. path .. '"')
+end
+
+--- BatteryGraph:closeFullHistoryPopup()
+--- No-op; browser handles its own lifecycle
+function obj:closeFullHistoryPopup()
 end
 
 --- BatteryGraph:clearData()
@@ -1036,7 +997,7 @@ function obj:stop()
     self = self or obj
     if obj.__timer then obj.__timer:stop(); obj.__timer = nil end
     if obj.canvas then obj.canvas:hide() end
-    obj:closeFullHistory()
+    obj:closeFullHistoryPopup()
     return self
 end
 
