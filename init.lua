@@ -279,7 +279,7 @@ local function buildCanvas()
                 if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
                     local ss = obj.canvas[obj.__selectionStatsIdx]
                     ss.text = rateTxt
-                    ss.textColor = obj.textColor
+                    ss.textColor = { white = 1, alpha = 0.7 }
                 end
             end
 
@@ -716,7 +716,7 @@ local function render()
             textFont = "Menlo",
             textSize = obj.fontSize,
             textColor = { white = 1, alpha = 0 },
-            frame = { x = 0, y = obj.height - 14, w = obj.width, h = 14 },
+            frame = { x = 0, y = obj.height - 12, w = obj.width, h = 12 },
             textAlignment = "center",
         }
     })

@@ -24,7 +24,8 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 **Drag across the chart:**
 - Click and drag to select a time range
 - A **light blue box** appears around the selected area
-- Shows **average battery change rate** at the bottom:
+- **Start → End point info** appears at the top: time and percentage of both endpoints (e.g., `10:20am 64%  →  11:25am 57%`)
+- **Average battery change rate** at the bottom:
   - Direction arrow (↑ for increase, ↓ for decrease)
   - Total % change and duration
   - Rate in %/hour (if >= 0.1) or %/minute (if smaller)
