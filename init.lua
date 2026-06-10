@@ -267,10 +267,45 @@ local function buildCanvas()
                 local x = select(1, ...)
                 obj.__dragStart = x
                 obj.__dragEnd = x
+                
+                -- Create eventtap to track mouse drag (canvas doesn't fire mouseMove while button is held)
+                if obj.__eventtap then obj.__eventtap:stop() end
+                obj.__eventtap = hs.eventtap.new(
+                    { hs.eventtap.event.types.mouseDragged, hs.eventtap.event.types.leftMouseUp },
+                    function(evt)
+                        local evtType = evt:getType()
+                        if evtType == hs.eventtap.event.types.mouseDragged then
+                            -- Get mouse position in canvas coordinates
+                            local mousePos = hs.mouse.absolutePosition()
+                            local canvasFrame = obj.canvas:frame()
+                            local relX = mousePos.x - canvasFrame.x
+                            local relY = mousePos.y - canvasFrame.y
+                            
+                            -- Update drag end
+                            obj.__dragEnd = relX
+                            updateSelectionBox()
+                            return false  -- Don't consume the event
+                        elseif evtType == hs.eventtap.event.types.leftMouseUp then
+                            -- Mouse released - stop eventtap
+                            if obj.__eventtap then
+                                obj.__eventtap:stop()
+                                obj.__eventtap = nil
+                            end
+                            
+                            -- Clear drag state after a brief delay to show selection
+                            hs.timer.doAfter(0.3, function()
+                                if not obj.__dragStart then return end  -- Already cleared
+                                obj.__dragStart = nil
+                                obj.__dragEnd = nil
+                                updateSelectionBox()
+                            end)
+                            return false
+                        end
+                    end
+                )
+                obj.__eventtap:start()
+                return false
              elseif message == "mouseUp" then
-                obj.__dragStart = nil
-                obj.__dragEnd = nil
-                updateSelectionBox()
                 local x = select(1, ...)
                 local gapThreshold = 4
                 obj.__gapMode = nil
@@ -285,13 +320,6 @@ local function buildCanvas()
                 end
              elseif message == "mouseMove" then
                 local x = select(1, ...)
-                
-                -- Track drag movement
-                if obj.__dragStart then
-                    obj.__dragEnd = x
-                    updateSelectionBox()
-                    return
-                end
                 
                 local gapThreshold = 4
 
@@ -333,10 +361,20 @@ local function buildCanvas()
                     end
                 end
              elseif message == "mouseExit" then
+                -- Don't clear drag state if we're actively dragging (eventtap handles it)
+                if obj.__dragStart then
+                    return
+                end
+                
+                -- Clean up eventtap if it exists
+                if obj.__eventtap then
+                    obj.__eventtap:stop()
+                    obj.__eventtap = nil
+                end
+                
                 obj.__gapMode = nil
-                obj.__dragStart = nil
-                obj.__dragEnd = nil
-                updateSelectionBox()
+                
+                -- Clear hover display (tooltip/cursor)
                 if obj.__tooltipIdx and obj.canvas:elementCount() >= obj.__tooltipIdx then
                     local el = obj.canvas[obj.__tooltipIdx]
                     el.text = ""
@@ -347,6 +385,8 @@ local function buildCanvas()
                     cl.coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } }
                     cl.strokeColor = { white = 1, alpha = 0 }
                 end
+                
+                updateSelectionBox()
             end
         end
     end)
@@ -618,6 +658,7 @@ local function render()
         fillColor = { alpha = 0.01 },
         frame = { x = margin.left, y = margin.top, w = cw, h = ch },
         trackMouseUp = true,
+        trackMouseDown = true,
         trackMouseMove = true,
         trackMouseEnterExit = true,
     }
