@@ -2,7 +2,7 @@
 
 A Hammerspoon Spoon that records and graphs battery percentage over time on your macOS desktop.
 
-![Screenshot](BatteryGraph.png)
+![Screenshot](screenshot.png)
 
 ## Features
 
