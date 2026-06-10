@@ -43,6 +43,7 @@ obj.__clearPending = false
 obj.__clearTimer   = nil
 obj.__tooltipIdx   = nil
 obj.__cursorIdx    = nil
+obj.__dragStartCursorIdx = nil
 obj.__gapMode      = nil
 obj.__dragStart    = nil
 obj.__dragEnd      = nil
@@ -206,19 +207,57 @@ local function buildCanvas()
                         ss.text = ""
                         ss.textColor = { white = 1, alpha = 0 }
                     end
+                    if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
+                        local cl = obj.canvas[obj.__cursorIdx]
+                        cl.strokeColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__dragStartCursorIdx and obj.canvas:elementCount() >= obj.__dragStartCursorIdx then
+                        local cl = obj.canvas[obj.__dragStartCursorIdx]
+                        cl.strokeColor = { white = 1, alpha = 0 }
+                    end
                     return
                 end
                 
                 local hCw = obj.width - margin.left - margin.right
                 local x1 = math.min(obj.__dragStart, obj.__dragEnd)
                 local x2 = math.max(obj.__dragStart, obj.__dragEnd)
-                local idx1 = math.max(1, math.min(hn, math.floor((x1 - margin.left) / hCw * (hn - 1)) + 1))
-                local idx2 = math.max(1, math.min(hn, math.floor((x2 - margin.left) / hCw * (hn - 1)) + 1))
+                -- Clamp selection box to chart bounds
+                local chartLeft = margin.left
+                local chartRight = obj.width - margin.right
+                x1 = math.max(chartLeft, math.min(chartRight, x1))
+                x2 = math.max(chartLeft, math.min(chartRight, x2))
+                if x2 <= x1 then
+                    if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                        local sb = obj.canvas[obj.__selectionBoxIdx]
+                        sb.strokeColor = { white = 1, alpha = 0 }
+                        sb.fillColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                        local ss = obj.canvas[obj.__selectionStatsIdx]
+                        ss.text = ""
+                        ss.textColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
+                        local cl = obj.canvas[obj.__cursorIdx]
+                        cl.strokeColor = { white = 1, alpha = 0 }
+                    end
+                    if obj.__dragStartCursorIdx and obj.canvas:elementCount() >= obj.__dragStartCursorIdx then
+                        local cl = obj.canvas[obj.__dragStartCursorIdx]
+                        cl.strokeColor = { white = 1, alpha = 0 }
+                    end
+                    return
+                end
+                local idx1 = math.max(1, math.min(hn, math.floor(((x1 - margin.left) / hCw * (hn - 1)) + 0.5) + 1))
+                local idx2 = math.max(1, math.min(hn, math.floor(((x2 - margin.left) / hCw * (hn - 1)) + 0.5) + 1))
+                -- Snap box positions to match cursor lines
+                x1 = margin.left + (idx1 - 1) / (hn - 1) * hCw
+                x2 = margin.left + (idx2 - 1) / (hn - 1) * hCw
                 
                 if idx1 == idx2 then
                     if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
                         local sb = obj.canvas[obj.__selectionBoxIdx]
                         sb.strokeColor = { white = 1, alpha = 0 }
+                        sb.fillColor = { white = 1, alpha = 0 }
                     end
                     if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
                         local ss = obj.canvas[obj.__selectionStatsIdx]
@@ -282,6 +321,26 @@ local function buildCanvas()
                     ss.text = rateTxt
                     ss.textColor = { white = 1, alpha = 0.7 }
                 end
+                
+                -- Show snap line at current drag position (matches hover line style)
+                if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
+                    local cl = obj.canvas[obj.__cursorIdx]
+                    local dragIdx = math.max(1, math.min(hn, math.floor(((obj.__dragEnd - margin.left) / hCw * (hn - 1)) + 0.5) + 1))
+                    local cx = margin.left + (dragIdx - 1) / (hn - 1) * hCw
+                    local cCh = obj.height - margin.top - margin.bottom
+                    cl.coordinates = { { x = cx, y = margin.top }, { x = cx, y = margin.top + cCh } }
+                    cl.strokeColor = { white = 1, alpha = 0.3 }
+                end
+                
+                -- Show snap line at drag start position
+                if obj.__dragStartCursorIdx and obj.canvas:elementCount() >= obj.__dragStartCursorIdx then
+                    local cl = obj.canvas[obj.__dragStartCursorIdx]
+                    local startIdx = math.max(1, math.min(hn, math.floor(((obj.__dragStart - margin.left) / hCw * (hn - 1)) + 0.5) + 1))
+                    local cx = margin.left + (startIdx - 1) / (hn - 1) * hCw
+                    local cCh = obj.height - margin.top - margin.bottom
+                    cl.coordinates = { { x = cx, y = margin.top }, { x = cx, y = margin.top + cCh } }
+                    cl.strokeColor = { white = 1, alpha = 0.3 }
+                end
             end
 
             if message == "mouseDown" then
@@ -305,7 +364,9 @@ local function buildCanvas()
                             local mousePos = hs.mouse.absolutePosition()
                             local canvasFrame = obj.canvas:frame()
                             obj.__dragEnd = mousePos.x - canvasFrame.x
-                            updateSelectionBox()
+                            if math.abs(obj.__dragEnd - obj.__dragStart) > 2 then
+                                updateSelectionBox()
+                            end
                         end
                         return false
                     end
@@ -326,25 +387,32 @@ local function buildCanvas()
              elseif message == "mouseMove" then
                 local x = select(1, ...)
                 
-                -- Clear post-drag selection when cursor moves
+                -- Clear post-drag selection when cursor moves (with 4px grace zone)
                 if obj.__dragStart and not obj.__dragActive then
-                    if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
-                        local sb = obj.canvas[obj.__selectionBoxIdx]
-                        sb.strokeColor = { white = 1, alpha = 0 }
-                        sb.fillColor = { white = 1, alpha = 0 }
+                    if math.abs(x - (obj.__dragEnd or obj.__dragStart)) > 4 then
+                        if obj.__selectionBoxIdx and obj.canvas:elementCount() >= obj.__selectionBoxIdx then
+                            local sb = obj.canvas[obj.__selectionBoxIdx]
+                            sb.strokeColor = { white = 1, alpha = 0 }
+                            sb.fillColor = { white = 1, alpha = 0 }
+                        end
+                        if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
+                            local ss = obj.canvas[obj.__selectionStatsIdx]
+                            ss.text = ""
+                            ss.textColor = { white = 1, alpha = 0 }
+                        end
+                        if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
+                            local cl = obj.canvas[obj.__cursorIdx]
+                            cl.strokeColor = { white = 1, alpha = 0 }
+                        end
+                        if obj.__dragStartCursorIdx and obj.canvas:elementCount() >= obj.__dragStartCursorIdx then
+                            local cl = obj.canvas[obj.__dragStartCursorIdx]
+                            cl.strokeColor = { white = 1, alpha = 0 }
+                        end
+                        obj.__dragStart = nil
+                        obj.__dragEnd = nil
+                    else
+                        return
                     end
-                    if obj.__selectionStatsIdx and obj.canvas:elementCount() >= obj.__selectionStatsIdx then
-                        local ss = obj.canvas[obj.__selectionStatsIdx]
-                        ss.text = ""
-                        ss.textColor = { white = 1, alpha = 0 }
-                    end
-                    if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
-                        local cl = obj.canvas[obj.__cursorIdx]
-                        cl.strokeColor = { white = 1, alpha = 0 }
-                    end
-                    obj.__dragStart = nil
-                    obj.__dragEnd = nil
-                    obj.__gapMode = nil
                 end
                 
                 local gapThreshold = 4
@@ -360,7 +428,7 @@ local function buildCanvas()
                 if hn < 2 then return end
                 local hCw = obj.width - margin.left - margin.right
                 local relX = x - margin.left
-                local idx = math.max(1, math.min(hn, math.floor(relX / hCw * (hn - 1)) + 1))
+                local idx = math.max(1, math.min(hn, math.floor((relX / hCw * (hn - 1)) + 0.5) + 1))
                 local e = hData[idx]
                 if e then
                     local hh = tonumber(os.date("%I", e.t))
@@ -410,6 +478,10 @@ local function buildCanvas()
                         ss.text = ""
                         ss.textColor = { white = 1, alpha = 0 }
                     end
+                    if obj.__dragStartCursorIdx and obj.canvas:elementCount() >= obj.__dragStartCursorIdx then
+                        local cl = obj.canvas[obj.__dragStartCursorIdx]
+                        cl.strokeColor = { white = 1, alpha = 0 }
+                    end
                     obj.__dragStart = nil
                     obj.__dragEnd = nil
                 end
@@ -424,6 +496,11 @@ local function buildCanvas()
                 end
                 if obj.__cursorIdx and obj.canvas:elementCount() >= obj.__cursorIdx then
                     local cl = obj.canvas[obj.__cursorIdx]
+                    cl.coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } }
+                    cl.strokeColor = { white = 1, alpha = 0 }
+                end
+                if obj.__dragStartCursorIdx and obj.canvas:elementCount() >= obj.__dragStartCursorIdx then
+                    local cl = obj.canvas[obj.__dragStartCursorIdx]
                     cl.coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } }
                     cl.strokeColor = { white = 1, alpha = 0 }
                 end
@@ -733,6 +810,18 @@ local function render()
         }
      })
     obj.__cursorIdx = obj.canvas:elementCount()
+    obj.canvas:appendElements({
+        {
+            id = "dragStartCursor",
+            type = "segments",
+            action = "stroke",
+            strokeColor = { white = 1, alpha = 0 },
+            strokeWidth = 0.5,
+            closed = false,
+            coordinates = { { x = 0, y = 0 }, { x = 0, y = 0 } },
+        }
+     })
+    obj.__dragStartCursorIdx = obj.canvas:elementCount()
     obj.canvas:appendElements({
         {
             type = "rectangle",

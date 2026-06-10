@@ -24,14 +24,16 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 
 **Drag across the chart:**
 - Click and drag to select a time range
-- A **light blue box** appears around the selected area
+- A **light blue box** appears around the selected area (snapped to data points)
+- **Vertical cursor lines** appear at both start and end positions, snapping to the nearest data point
 - **Start → End point info** appears at the top: time and percentage of both endpoints (e.g., `10:20am 64%  →  11:25am 57%`)
 - **Average battery change rate** at the bottom:
   - Direction arrow (↑ for increase, ↓ for decrease)
   - Total % change and duration
   - Rate in %/hour (if >= 0.1) or %/minute (if smaller)
 - Example: `↓ 15.2% in 94m  9.7%/h`
-- Selection stays visible after release; clears when you move the mouse within the chart or mouse leaves the chart area
+- Must drag more than 3px to activate (preserves hover on tiny accidental drags)
+- Selection stays visible after release; clears when you move the cursor beyond 4px from the release point or the mouse leaves the chart area
 
 **Click near a red gap marker** (within ~4px):
 - Shows **gap range** instead: start and end times with percentages on both sides (e.g., `10:20am 64% → 11:25am 57%`)
