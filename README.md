@@ -22,7 +22,7 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 - Shows **time and percentage** of the hovered data point at the top (e.g., `10:20am  64%`)
 - Displays a **white vertical cursor line** at the hovered point's x-position
 - Both disappear when the mouse leaves the chart area
-- Hover handler is throttled to ~30fps to reduce GPU load from canvas property updates
+- Hover handler is throttled to ~60fps to reduce GPU load from canvas property updates
 
 **Drag across the chart:**
 - Click and drag to select a time range

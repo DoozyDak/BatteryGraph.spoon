@@ -388,7 +388,7 @@ local function buildCanvas()
                 
                 -- Throttle to ~30fps to reduce GPU redraws
                 local now = hs.timer.absoluteTime()
-                if now - __lastMouseMove < 33333333 then return end
+                if now - __lastMouseMove < 16666667 then return end
                 __lastMouseMove = now
                 
                 -- Clear post-drag selection when cursor moves (with 4px grace zone)
