@@ -118,7 +118,7 @@ local function getDisplayData()
             maxIdx = i
         end
     end
-    if curPct < maxPct then
+    if curPct < maxPct and n - maxIdx >= 2 then
         local out = {}
         for i = maxIdx + 1, n do
             table.insert(out, data[i])
