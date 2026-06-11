@@ -49,6 +49,7 @@ obj.__dragActive   = nil
 obj.__selectionBoxIdx = nil
 obj.__selectionStatsIdx = nil
 obj.__moveTracker = nil
+local __lastMouseMove = 0
 
 local margin = { top = 18, right = 26, bottom = 24, left = 34 }
 
@@ -384,6 +385,11 @@ local function buildCanvas()
                 end
              elseif message == "mouseMove" then
                 local x = select(1, ...)
+                
+                -- Throttle to ~30fps to reduce GPU redraws
+                local now = hs.timer.absoluteTime()
+                if now - __lastMouseMove < 33333333 then return end
+                __lastMouseMove = now
                 
                 -- Clear post-drag selection when cursor moves (with 4px grace zone)
                 if obj.__dragStart and not obj.__dragActive then

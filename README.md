@@ -7,7 +7,7 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 ## Features
 
 - **Live desktop widget** — polls `hs.battery` every 60s and draws a stepped line chart on the desktop
-- **Stepped line** — horizontal holds at each sampled value with vertical drops/gains at change points (no diagonal interpolation between polls)
+- **Stepped line (popup)** — the browser popup chart uses `stepped:'before'` mode: horizontal holds at each sampled value with vertical drops/gains (no diagonal interpolation)
 - **Gap markers** — red vertical indicators show where time gaps (sleep, offline periods) occurred; adjacent gaps automatically merge into one marker
 - **Change markers** — vertical lines at battery change events with auto-scaling density (`(changes/20)^1.3`)
 - **Trim to discharge** — automatically cuts off previous charge cycles once the battery starts draining
@@ -22,6 +22,7 @@ A Hammerspoon Spoon that records and graphs battery percentage over time on your
 - Shows **time and percentage** of the hovered data point at the top (e.g., `10:20am  64%`)
 - Displays a **white vertical cursor line** at the hovered point's x-position
 - Both disappear when the mouse leaves the chart area
+- Hover handler is throttled to ~30fps to reduce GPU load from canvas property updates
 
 **Drag across the chart:**
 - Click and drag to select a time range
@@ -90,6 +91,8 @@ spoon.BatteryGraph:start()
 | `windowLevel` | `nil` | `"desktopIcon"`, `"normal"`, etc. |
 | `width` / `height` | `280` / `180` | Canvas size |
 | `backgroundColor` | `{ alpha = 0.3, white = 0 }` | Background fill |
+| `backgroundBorder` | `{ alpha = 0.5 }` | Border (nil = no border) |
+| `cornerRadius` | `8` | Corner rounding |
 | `lineColor` | `{ red = 0.2, green = 0.7, blue = 1, alpha = 0.85 }` | Graph line color |
 | `fillColor` | `{ red = 0.2, green = 0.7, blue = 1, alpha = 0.15 }` | Area fill under curve |
 | `gridColor` | `{ white = 1, alpha = 0.12 }` | Grid line color |
