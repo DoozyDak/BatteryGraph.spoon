@@ -96,7 +96,10 @@ spoon.BatteryGraph:start()
 | `lineColor` | `{ red = 0.2, green = 0.7, blue = 1, alpha = 0.85 }` | Graph line color |
 | `fillColor` | `{ red = 0.2, green = 0.7, blue = 1, alpha = 0.15 }` | Area fill under curve |
 | `gridColor` | `{ white = 1, alpha = 0.12 }` | Grid line color |
-| `textColor` | `{ white = 1, alpha = 0.6 }` | Label color |
+| `yAxisTextColor` | `{ white = 1, alpha = 0.4 }` | Y-axis label color |
+| `xAxisTextColor` | `{ white = 1, alpha = 0.5 }` | X-axis label color |
+| `textColor` | `{ white = 1, alpha = 0.6 }` | Status message color |
+| `buttonColor` | `{ white = 1, alpha = 0.3 }` | ◉ and × button color |
 | `fontSize` | `10` | Label font size |
 | `pollInterval` | `60` | Seconds between battery readings |
 | `maxHours` | `24` | Hours of history to keep |

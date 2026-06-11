@@ -25,7 +25,10 @@ obj.cornerRadius      = 8
 obj.lineColor         = { red = 0.2, green = 0.7, blue = 1, alpha = 0.85 }
 obj.fillColor         = { red = 0.2, green = 0.7, blue = 1, alpha = 0.15 }
 obj.gridColor         = { white = 1, alpha = 0.12 }
+obj.yAxisTextColor    = { white = 1, alpha = 0.4 }
 obj.textColor         = { white = 1, alpha = 0.6 }
+obj.xAxisTextColor    = { white = 1, alpha = 0.5 }
+obj.buttonColor       = { white = 1, alpha = 0.3 }
 obj.fontSize          = 10
 obj.pollInterval      = 60
 obj.maxHours          = 24
@@ -558,7 +561,7 @@ local function render()
             text = "◉",
             textFont = "Menlo",
             textSize = 12,
-            textColor = { white = 1, alpha = 0.3 },
+            textColor = obj.buttonColor,
             frame = { x = obj.width - 16, y = 4, w = 14, h = 14 },
             trackMouseUp = true,
         }
@@ -568,7 +571,7 @@ local function render()
             text = "×",
             textFont = "Menlo",
             textSize = 12,
-            textColor = { white = 1, alpha = 0.3 },
+            textColor = obj.buttonColor,
             frame = { x = obj.width - 16, y = obj.height - 16, w = 14, h = 14 },
             trackMouseUp = true,
         }
@@ -599,7 +602,7 @@ local function render()
                 text = tostring(i * 25) .. "%",
                 textFont = "Menlo",
                 textSize = obj.fontSize,
-                textColor = obj.textColor,
+                textColor = obj.yAxisTextColor,
                 frame = { x = 2, y = y - (obj.fontSize + 2) / 2, w = margin.left - 6, h = obj.fontSize + 2 },
                 textAlignment = "right",
             }
@@ -735,7 +738,7 @@ local function render()
             text = text,
             textFont = "Menlo",
             textSize = obj.fontSize,
-            textColor = obj.textColor,
+            textColor = obj.xAxisTextColor,
             frame = { x = frameX, y = margin.top + ch + 2, w = labelW, h = labelH },
             textAlignment = "center",
         }
@@ -780,7 +783,7 @@ local function render()
         text = "◉",
         textFont = "Menlo",
         textSize = 12,
-        textColor = { white = 1, alpha = 0.3 },
+        textColor = obj.buttonColor,
         frame = { x = obj.width - 16, y = 4, w = 14, h = 14 },
         trackMouseUp = true,
     }
@@ -790,7 +793,7 @@ local function render()
         text = "×",
         textFont = "Menlo",
         textSize = 12,
-        textColor = { white = 1, alpha = 0.3 },
+        textColor = obj.buttonColor,
         frame = { x = obj.width - 16, y = obj.height - 16, w = 14, h = 14 },
         trackMouseUp = true,
     }
